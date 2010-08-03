@@ -64,8 +64,8 @@ false return FALSE;
 [\+|\-]?[0-9]+\.[0-9]+([e|E][0-9]+)? { yylval.s = copy(yytext,yyleng); return FLOATING;}
 [\+|\-]?[0-9]+ { yylval.s = copy(yytext,yyleng); return INTEGER;}
 [\[\]\:\{\},]	return yytext[0];
-\"	{yylval.s=NULL; BEGIN(quot); }
-\'	{yylval.s=NULL; BEGIN(apos); }
+\"	{yylval.s=copy("",0); BEGIN(quot); }
+\'	{yylval.s=copy("",0); BEGIN(apos); }
 [ \n\t\r]+ ;/* ignore */
 .	{
 	fprintf(stderr,"Bad input \"%s\".\n",yytext);
