@@ -7,6 +7,9 @@ all:../bin/json2xml ../bin/fasta2term ../bin/text2html
 	flex  text2html.l
 	$(CC) $(CFLAGS) -o $@ lex.yy.c
 
+../bin/text2c:text2c.c
+	$(CC) $(CFLAGS) -o $@ $<
+
 ../bin/json2xml:json2xml.l json2xml.y Makefile
 	flex  json2xml.l
 	bison -d json2xml.y

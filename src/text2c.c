@@ -1,49 +1,41 @@
-%{
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
-int crlf2br=0;
-static void escape2(char* s,int len)
+static char* eol=NULL;
+
+static void run(FILE* in)
 	{
-	int i=0;
-	for(i=0;i < len;++i)
+	int at_begin=1;
+	int c=0;
+	while((c=fgetc(in))!=EOF)
 		{
-		switch(s[i])
+		if(at_begin==1) fputc('\"',stdout);
+		if(c!='\n') at_begin=0;
+		switch(c)
 			{
-			case '&':fputs("&amp;",stdout);break;
-			case '<':fputs("&lt;",stdout);break;
-			case '>':fputs("&gt;",stdout);break;
-			case '\'':fputs("&apos;",stdout);break;
-			case '\"':fputs("&quot;",stdout);break;
-			default:fputc(s[i],stdout);break;
+			case '\n':
+				{
+				fputs("\\n\"",stdout);
+				if(eol!=NULL)  fputs(eol,stdout);
+				fputc('\n',stdout);
+				at_begin=1;
+				break;
+				}
+			case '\r': fputs("\\r",stdout);break;
+			case '\b': fputs("\\b",stdout);break;
+			case '\'': fputs("\\\'",stdout);break;
+			case '\"': fputs("\\\"",stdout);break;
+			case '\t': fputs("\\t",stdout);break;
+			case '\\': fputs("\\\\",stdout);break;
+			default: fputc(c,stdout);break;
 			}
 		}
+	if(at_begin!=1)
+		{
+		fputs("\"\n",stdout);
+		}
 	}
-static void escape()
-	{
-	escape2(yytext,yyleng);
-	}
-%}
-%option noyywrap
-
-%%
-((http[s]?|ftp)\:\/\/|mailto\:)[\?\&%a-zA-Z\+0-9_@=\.\:\/\#\-]+	{
-	fputs("<a href=\"",stdout);
-	escape();
-	fputs("\">",stdout);
-	escape();
-	fputs("</a>",stdout);
-	}
-\>	fputs("&gt;",stdout);
-\<	fputs("&lt;",stdout);
-\&	fputs("&amp;",stdout);
-\'	fputs("&apos;",stdout);
-\"	fputs("&quot;",stdout);
-\n	fputs((crlf2br==1?"<br/>":"\n"),stdout);
-\r	;
-.	fputc(yytext[0],stdout);
-
-%%
 
 int main(int argc,char** argv)
          {
@@ -54,12 +46,12 @@ int main(int argc,char** argv)
                         {
                         fprintf(stderr,"%s: Pierre Lindenbaum PHD. 2010.\n",argv[0]);
                         fprintf(stderr,"Compilation: %s at %s.\n",__DATE__,__TIME__);
-                        fprintf(stderr," --br|-n replace CR by <br/>.\n");
+                        fprintf(stderr," -n <string> trailing string (default empty) \n");
                         exit(EXIT_FAILURE);
                         }
-                else if(strcmp(argv[optind],"--br")==0 || strcmp(argv[optind],"-n")==0)
+                else if(strcmp(argv[optind],"-n")==0 && optind+1<argc)
                         {
-                        crlf2br=1;
+                        eol=argv[++optind];
                         }
                 else if(strcmp(argv[optind],"--")==0)
                         {
@@ -77,36 +69,29 @@ int main(int argc,char** argv)
                         }
                 ++optind;
                 }
-        fputs("<html><body>",stdout);
+       
         if(optind==argc)
                 {
-                yyin=stdin;
-                printf("\n<div>");
-		yylex();
-		printf("</div>\n");
+                run(stdin);
                 }
         else
                 {
                 while(optind< argc)
                         {
+                        FILE* in=NULL;
                         char* fname=argv[optind++];
                         errno=0;
-			yyin=fopen(fname,"r");
-			if(yyin==NULL)
+			in=fopen(fname,"r");
+			if(in==NULL)
 				{
 				fprintf(stderr,"Cannot open %s : %s\n",fname,strerror(errno));
 				exit( EXIT_FAILURE);
 				}
 			
-			printf("\n<h4>");
-			escape2(fname,strlen(fname));
-			printf("</h4><div>");
-			yylex();
-			printf("</div>\n");
-			fclose(yyin);
+			run(in);
+			fclose(in);
                         }
                 }
-        fputs("</body></html>\n",stdout);
         return EXIT_SUCCESS;
         }
 
