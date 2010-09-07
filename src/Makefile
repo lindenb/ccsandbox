@@ -1,7 +1,7 @@
 CFLAGS=-Wall -I../../cclindenb/src/core
 CC=gcc
 CPP=g++
-all:../bin/json2xml ../bin/fasta2term ../bin/text2html
+all:../bin/json2xml ../bin/fasta2term ../bin/text2html ../bin/xmlpath
 	
 ../bin/text2html:text2html.l Makefile
 	flex  text2html.l
@@ -17,7 +17,10 @@ all:../bin/json2xml ../bin/fasta2term ../bin/text2html
 
 ../bin/fasta2term:fasta2term.c
 	$(CC) $(CFLAGS) -o $@ fasta2term.c
-	
+
+../bin/xmlpath:xmlpath.cpp
+	$(CPP) $(CFLAGS) -o $@ xmlpath.cpp `xml2-config --cflags --libs`
+
 a.out:jsonql.cpp jsonql.h json2xml.l
 	flex  json2xml.l
 	$(CPP)  -o $@ jsonql.cpp lex.yy.c -lz
