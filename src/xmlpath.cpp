@@ -32,11 +32,56 @@ static void recurs(std::vector<xmlNodePtr>& path,xmlNodePtr node,const char* ele
 			i< path.size();++i)
 			{
 			cout << "/";
+			if(path.at(i)->type == XML_ATTRIBUTE_NODE)
+				{
+				cout << "@";
+				}
 			cout << path.at(i)->name;
-			} 
+			}
+		bool hasChildren=false;
+		for (child = node->children;child!=NULL; child = child->next)
+			{
+			if(child->type == XML_ELEMENT_NODE) {hasChildren=true;break;}
+			}
+		if(!hasChildren)
+			{
+			cout << "\t";
+			for (child = node->children;child!=NULL; child = child->next)
+				{
+				if(child->type != XML_TEXT_NODE)continue;
+				xmlChar* content=xmlNodeGetContent(child);
+				cout << (char*)content;
+				xmlFree(content);
+				}
+			}
 		cout << endl;
 		}
+	
+	for(xmlAttrPtr att = node->properties; att != NULL; att = att->next)
+		{
+    		if(elementName==NULL || strcmp( (const char*) att->name, elementName)==0)
+			{
+			for(std::vector<xmlNodePtr>::size_type i=0;
+				i< path.size();++i)
+				{
+				cout << "/";
+				cout << path.at(i)->name;
+				}
+			cout << "/@";
+			cout << att->name;
+			
+			xmlChar* value = xmlGetProp(node, att->name);
+			if(value!=NULL)
+				{
+				cout << "\t";
+				cout << (char*)value;
+				xmlFree(value); 
+				}
+			cout << endl;
+			}
+		}
 
+	
 	for (child = node->children;child!=NULL; child = child->next)
 		{
 		if(child->type != XML_ELEMENT_NODE) continue;
