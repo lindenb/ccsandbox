@@ -15,80 +15,112 @@
 #include <cerrno>
 #include <iostream>
 #include <vector>
+#include <string>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
 using namespace std;
-
-/** process the DOM tree recursively, echo path if it matches */
-static void recurs(std::vector<xmlNodePtr>& path,xmlNodePtr node,const char* elementName)
+class Tag
 	{
-	xmlNodePtr child=NULL;
-	if(node==NULL) return;
-	path.push_back(node);
-	if(elementName==NULL || strcmp( (const char*) node->name, elementName)==0)
-		{
-		for(std::vector<xmlNodePtr>::size_type i=0;
-			i< path.size();++i)
+	public:
+		string qName;
+		bool hasChildren;
+		
+		Tag(string qName):qName(qName),hasChildren(false)
 			{
-			cout << "/";
-			if(path.at(i)->type == XML_ATTRIBUTE_NODE)
-				{
-				cout << "@";
-				}
-			cout << path.at(i)->name;
 			}
-		bool hasChildren=false;
-		for (child = node->children;child!=NULL; child = child->next)
-			{
-			if(child->type == XML_ELEMENT_NODE) {hasChildren=true;break;}
-			}
-		if(!hasChildren)
-			{
-			cout << "\t";
-			for (child = node->children;child!=NULL; child = child->next)
-				{
-				if(child->type != XML_TEXT_NODE)continue;
-				xmlChar* content=xmlNodeGetContent(child);
-				cout << (char*)content;
-				xmlFree(content);
-				}
-			}
-		cout << endl;
-		}
-	
-	for(xmlAttrPtr att = node->properties; att != NULL; att = att->next)
-		{
-    		if(elementName==NULL || strcmp( (const char*) att->name, elementName)==0)
-			{
-			for(std::vector<xmlNodePtr>::size_type i=0;
-				i< path.size();++i)
-				{
-				cout << "/";
-				cout << path.at(i)->name;
-				}
-			cout << "/@";
-			cout << att->name;
-			
-			xmlChar* value = xmlGetProp(node, att->name);
-			if(value!=NULL)
-				{
-				cout << "\t";
-				cout << (char*)value;
-				xmlFree(value); 
-				}
-			cout << endl;
-			}
-		}
+	};
 
-	
-	for (child = node->children;child!=NULL; child = child->next)
-		{
-		if(child->type != XML_ELEMENT_NODE) continue;
-		recurs(path,child,elementName);
-		}
+class XMLHandler
+	{
+	public:
+		vector<Tag*> stack;
+		string* content;
+		XMLHandler():content(NULL)
+			{
+			}
+	};
 
-	path.pop_back();
+/** called when an TAG is opened */
+static void startElement(void * ctx,
+	const xmlChar * localname,
+	const xmlChar * prefix,
+	const xmlChar * URI,
+	int nb_namespaces,
+	const xmlChar ** namespaces,
+	int nb_attributes,
+	int nb_defaulted,
+	const xmlChar ** attributes)
+	{
+	XMLHandler* state=(XMLHandler*)ctx;
+	if(state->content!=NULL)
+		{
+		delete state->content;
+		state->content=NULL;
+		}
+	string qName;
+	if(prefix!=NULL && strlen((char*)prefix)>0)
+		{
+		qName.append((char*)prefix).append(":");
+		}
+	qName.append((char*)localname);
+	Tag* tag=new Tag(qName);
+	if(!state->stack.empty())
+		{
+		state->stack.back()->hasChildren=true;
+		}
+	state->stack.push_back(tag);
+	
+	for(int i=0;i< nb_attributes;++i)
+		{
+		
+		int len=(char*) attributes[i*5+4]-(char*) attributes[i*5+3];
+		string att((char*) attributes[i*5+3],len);
+		for(vector<string>::size_type n=0;
+			n< state->stack.size();
+			++n)
+			{
+			cout << "/"<< state->stack.at(n)->qName;
+			}
+		cout << "/@" << ((char*) attributes[i*5]) << "\t" << att << endl;
+		}
+	}
+
+
+/** called when an TAG is closed */
+static void endElement(void * ctx,
+	const xmlChar * localname,
+	const xmlChar * prefix,
+	const xmlChar * URI)
+	{
+	XMLHandler* state=(XMLHandler*)ctx;
+	for(vector<string>::size_type n=0;
+			n< state->stack.size();
+			++n)
+			{
+			cout << "/"<< state->stack.at(n)->qName;
+			}
+	if(state->content!=NULL && !state->stack.back()->hasChildren)
+		{
+		cout << "\t" <<  *(state->content);
+		}
+	cout << endl;
+	delete state->stack.back();
+	state->stack.pop_back();
+	if(state->content!=NULL)
+		{
+		delete state->content;
+		state->content=NULL;
+		}
+	}
+
+static void handleCharacters(void * ctx, const xmlChar * ch, int len)
+	{
+	XMLHandler* state=(XMLHandler*)ctx;
+	if(state->stack.empty()) return;
+	if(state->stack.back()->hasChildren) return;
+	if(state->content==NULL) state->content=new string;	
+	state->content->append((char*)ch,len);
 	}
 
 
@@ -96,7 +128,6 @@ static void recurs(std::vector<xmlNodePtr>& path,xmlNodePtr node,const char* ele
 
 int main(int argc,char** argv)
          {
-         char* elementName=NULL;
          int optind=1;
 	 LIBXML_TEST_VERSION
 	/* loop over args */
@@ -106,13 +137,8 @@ int main(int argc,char** argv)
                         {
                         cerr << argv[0] << ": Pierre Lindenbaum PHD. 2010." << endl;
                         cerr << "Compilation: "<< __DATE__ << " at " << __TIME__ << "." << endl;
-                        cerr << "Option:\n";
-                        cerr << " -t <tag> matching tag (or match everything if not defined." << endl;
+                      	
                         return(EXIT_FAILURE);
-                        }
-                else if(strcmp(argv[optind],"-t")==0)
-                        {
-			elementName=argv[++optind];
                         }
                 else if(strcmp(argv[optind],"--")==0)
                         {
@@ -131,30 +157,39 @@ int main(int argc,char** argv)
                 ++optind;
                 }
 	
+	XMLHandler state;
+	
+	xmlSAXHandler handler;
+	memset(&handler,0,sizeof(xmlSAXHandler));
+	handler.startElementNs= startElement;
+	handler.endElementNs=endElement;
+	handler.characters=handleCharacters;
+	handler.initialized = XML_SAX2_MAGIC;
         if(optind==argc)
                 {
-                cerr << "Illegal number of arguments." << endl;
-		return EXIT_FAILURE;
+                int res=xmlSAXUserParseFile(&handler,&state,"-");
+		if(res!=0)
+			{
+			std::cerr << "Error "<< res << " : stdin" << std::endl;
+			return EXIT_FAILURE;
+			}
                 }
-         while(optind <argc)
-         	{
-		std::vector<xmlNodePtr> path;
-		char* fname=argv[optind++];
-		xmlDocPtr dom=xmlParseFile(fname);
-		if(dom==NULL)
-			{
-			cerr << "Cannot read XML file " << fname << endl;
-			exit( EXIT_FAILURE);
+        else
+        	{
+		while(optind <argc)
+			{	
+			char* fname=argv[optind++];
+			int res=xmlSAXUserParseFile(&handler,&state,fname);
+	
+			if(res!=0)
+				{
+				std::cerr << "Error "<< res << " : " << fname<< std::endl;
+				return EXIT_FAILURE;
+				}
 			}
-		xmlNodePtr root_element = xmlDocGetRootElement(dom);
-		if(root_element==NULL)
-			{
-			cerr << "Cannot get root for XML file " << fname << endl;
-			exit( EXIT_FAILURE);
-			}
-		recurs(path,root_element,elementName);
-		xmlFreeDoc(dom);
 		}
+	xmlCleanupParser();
+	xmlMemoryDump();
 	return EXIT_SUCCESS;
         }
 
