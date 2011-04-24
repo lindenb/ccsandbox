@@ -2,7 +2,10 @@ CFLAGS=-Wall -I../../cclindenb/src/core
 CC=gcc
 CPP=g++
 FLEX=flex
-all:../bin/json2xml ../bin/fasta2term ../bin/text2html ../bin/xmlpath
+all:../bin/json2xml ../bin/fasta2term ../bin/text2html ../bin/xmlpath ../bin/geneticpainting01
+	
+../bin/geneticpainting01:geneticpainting01.cpp
+	$(CPP) -o $@ -O3 $<  -lgd -lpthread
 	
 ../bin/text2html:text2html.l Makefile
 	flex  text2html.l
