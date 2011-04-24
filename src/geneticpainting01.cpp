@@ -414,7 +414,7 @@ static void train()
 			{
 			for(int j=0;j< solutions.size();++j)
 				{
-				if(i==j) continue;
+				//if(i==j) continue;
 				children.push_back(mate(solutions[i],solutions[j],&img2));
 				}
 			}
