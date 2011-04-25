@@ -10,6 +10,69 @@
  * Compilation:
  *	g++  -o geneticpainting -O3 geneticpainting01.cpp  -lgd -lpthread
  */
+/* example html file:
+ 
+ 
+ <html>
+<head>
+<script type="text/javascript" src="_painting.js"></script>
+<script type="text/javascript">
+function paintLW0gTUxECg(param)
+	{
+	param.ctx=param.circle.getContext("2d");
+	param.ctx.fillStyle = "rgb(255,255,255)";
+	param.ctx.fillRect (0,0, solution.width,solution.height);
+	for(var i=0;i+7< param.array.length;i+=7)
+		{
+		param.ctx.beginPath();
+		param.ctx.arc(
+			param.array[i+0],
+			param.array[i+1], 
+			(param.n > param.array[i+2] ? param.array[i+2] : param.n),
+			0, Math.PI*2, true);
+		param.ctx.closePath();
+		param.ctx.fillStyle = "rgb("+
+			param.array[i+3]+","+
+			param.array[i+4] +","+
+			param.array[i+5] +")";
+		param.ctx.globalAlpha= param.array[i+6];
+		param.ctx.fill();
+		}
+	param.ctx.fillStyle = "rgb(0,0,0)";
+	//param.ctx.drawRect(0,0, solution.width-1,solution.height-1);
+	if(param.n< param.maxRadius)
+		{
+		param.n++;
+		setTimeout(paintLW0gTUxECg,param.time,param);
+		}
+	
+	}
+function initLW0gTUxECg()
+	{
+	var param={maxRadius:0,n:1,circle:null,ctx:null,array:[],time:50};
+	param.circle = document.getElementById("x1");
+	if (!param.circle.getContext)return;
+	param.circle.setAttribute("width",solution.width);
+	param.circle.setAttribute("height",solution.height);
+	param.ctx=param.circle.getContext("2d");
+	param.array= solution.shapes;
+	
+	for(var i=0;i+7< param.array.length;i+=7)
+		{
+		if(param.maxRadius < param.array[i+2])
+			{
+			param.maxRadius=param.array[i+2];
+			}
+		}
+	setTimeout(paintLW0gTUxECg,param.time,param);
+	}
+</script>
+</head>
+<body onload="initLW0gTUxECg();"><canvas id="x1"/></body>
+</html>
+*/
+ 
+ 
 #include <gd.h>
 #include <cstdio>
 #include <iostream>
@@ -134,7 +197,6 @@ class Circle
 		int cx;
 		int cy;
 		int radius;
-		Image* image;
 		Circle():fill(0)
 		{
 		
@@ -159,7 +221,13 @@ class Circle
 		}
 	virtual void mute()
 		{
-		radius+= 5-RANDOM->nextInt(10);
+		for(;;)
+			{
+			int d= 10-RANDOM->nextInt(20);
+			if(d==0 || this->radius+d <= 0) continue;
+			this->radius+=d;
+			break;
+			};
 		}
 	static Circle* create(Image* image)
 		{
@@ -210,8 +278,9 @@ class Solution
 	{
 	public:
 		long fitness;
+		int generation;
 		std::vector<Circle*> shapes;
-		Solution():fitness(0L)
+		Solution():fitness(0L),generation(0)
 			{
 			
 			}
@@ -234,6 +303,7 @@ class Solution
 			{
 			Solution* s=new Solution;
 			s->fitness=fitness;
+			s->generation=generation;
 			for(int j=0;j< shapes.size();++j)
 				{
 				
@@ -253,7 +323,7 @@ class Solution
 				<< "<svg xmlns='http://www.w3.org/2000/svg' "
 				<<" width='" << imageSource->width()<< "' height='" <<  imageSource->height()<< "'>\n"
 				;
-			out << "<title>" << fitness << "</title>\n";
+			out << "<title>" << generation <<" := "<< fitness << "</title>\n";
 			out <<"<rect x='0' y='0' style='fill:none;' width='" << imageSource->width()<< "' height='" <<  imageSource->height()<< "'/>\n";
 			for(int j=0;j< shapes.size();++j)
 				{
@@ -272,7 +342,7 @@ class Solution
 				return;
 				}
 			
-			out << "var solution={width="<< image->width()<<",height=" << image->height() <<",shapes=[";
+			out << "var solution={width:"<< image->width()<<",height:" << image->height() <<",shapes:[";
 			for(int j=0;j< shapes.size();++j)
 				{
 				if(j>0) out << ",";
@@ -285,10 +355,16 @@ class Solution
 		
 	};
 
-bool compareSolutions (const Solution* s1, const Solution* s2)
+static bool compareSolutions (const Solution* s1, const Solution* s2)
 	{
 	return s1->fitness < s2->fitness;
 	}
+
+static bool compareByRadius (const Circle* s1, const Circle* s2)
+	{
+	return s1->radius > s2->radius;
+	}
+
 
 static Solution* makeSolution(Image* image)
 	{
@@ -298,6 +374,10 @@ static Solution* makeSolution(Image* image)
 		{
 		--n;
 		sol->shapes.push_back(Circle::create(image));
+		}
+	if(RANDOM->nextBool())
+		{
+		std::sort(sol->shapes.begin(),sol->shapes.end(),::compareByRadius);
 		}
 	return sol;
 	}
@@ -408,6 +488,10 @@ static void train()
 			Solution* solution=makeSolution(&img2);
 			solutions.push_back(solution);
 			}
+		if(best!=NULL && RANDOM->nextBool())
+			{
+			solutions.push_back(best->clone());
+			}
 		
 		std::vector<Solution*> children;
 		for(int i=0;i< solutions.size();++i)
@@ -446,7 +530,7 @@ static void train()
 			
 			}
 		std::sort(children.begin(),children.end(),::compareSolutions);
-		std::cout << n_generation<< ":" << children[0]->fitness << std::endl;
+		
 		
 		
 		while(children.size()>parents_per_generation)
@@ -459,11 +543,14 @@ static void train()
 			if(best==NULL)
 				{
 				best=children[0]->clone();
+				best->generation=n_generation;
 				}
 			else if(best->fitness > children[0]->fitness)
 				{
 				delete best;
+				std::cout << n_generation<< ":" << children[0]->fitness << std::endl;
 				best=children[0]->clone();
+				best->generation=n_generation;
 				std::cerr << "SAVING " << n_generation << std::endl;
 				::gdImageFilledRectangle(img2.gd(),0,0,img2.width(),img2.height(),white);	
 				best->paint(&img2);
