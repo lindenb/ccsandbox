@@ -86,11 +86,15 @@ function initLW0gTUxECg()
 #include <fstream>
 #include <cerrno>
 #include <pthread.h>
-
+enum e_shape_type {
+	e_circle,e_rect,e_line
+	};
+	
 static int min_shapes_per_solution=100;
 static int max_shapes_per_solution=500;
 static int parents_per_generation=10;	
 static int max_size_radius=50;
+static e_shape_type shape_type=e_circle;
 static std::string filenameout("_painting");
 class Image;
 class Random;
@@ -124,6 +128,7 @@ class Random
 
 static Random* RANDOM=NULL;
 #define ENDS_WITH(a,b)  (std::strlen(a) >= std::strlen(b) && strcasecmp(&(a)[std::strlen(a)-std::strlen(b)],b)==0)
+
 class Image
 	{
 	private:
@@ -187,30 +192,62 @@ class Image
 static Image* imageSource=NULL;
 
 
-
-
-
-class Circle
+class Shape
 	{
+	protected:
+		int mut255(int n)
+			{
+			n+= 1-RANDOM->nextInt(3);
+			if(n<0) return 0;
+			if(n>=255) return 255;  
+			}
 	public:
 		int fill;
+		Shape():fill(0)
+			{
+			}
+		virtual ~Shape()
+			{
+			}
+		virtual void paint(Image* img)=0;
+		virtual Shape* clone()=0;
+		virtual void mute(Image* image)=0;
+		virtual void svg(std::ostream& out,Image* image)=0;
+		virtual void html(std::ostream& out,Image* image)=0;
+		virtual e_shape_type type()=0;
+		virtual void muteColor(Image* image)
+			{
+			int r=mut255(gdImageRed(image->gd(),fill));
+			int g=mut255(gdImageGreen(image->gd(),fill));
+			int b=mut255(gdImageBlue(image->gd(),fill));
+			int a=mut255(gdImageAlpha(image->gd(),fill));
+			if(a<=0) a=1;
+			this->fill=::gdImageColorAllocateAlpha(image->gd(),r,g,b,a);
+			}
+	};
+
+
+class Circle:public Shape
+	{
+	public:
+
 		int cx;
 		int cy;
 		int radius;
-		Circle():fill(0)
+		Circle()
 		{
 		
 		}
-	~Circle()
+	virtual ~Circle()
 		{
 		
 		}
-	void paint(Image* img)
+	virtual void paint(Image* img)
 		{
 		//std::cerr << cx << "x" << cy << " " << radius << std::endl;
 		::gdImageFilledEllipse(img->gd(),cx,cy,radius*2,radius*2,fill);
 		}
-	virtual Circle* clone()
+	virtual Shape* clone()
 		{
 		Circle* c=new Circle;
 		c->cx=cx;
@@ -219,16 +256,21 @@ class Circle
 		c->fill=fill;
 		return c;
 		}
-	virtual void mute()
+	virtual void mute(Image* image)
 		{
 		for(;;)
 			{
-			int d= 10-RANDOM->nextInt(20);
+			int d= 10-RANDOM->nextInt(21);
 			if(d==0 || this->radius+d <= 0) continue;
 			this->radius+=d;
 			break;
 			};
+		
+		this->cx+=2-RANDOM->nextInt(5);
+		this->cy+=2-RANDOM->nextInt(5);
+		muteColor(image);
 		}
+	
 	static Circle* create(Image* image)
 		{
 		Circle* c=new Circle;
@@ -248,7 +290,7 @@ class Circle
 		assert(c->fill!=-1);
 		return c;
 		}
-	void svg(std::ostream& out,Image* image)
+	virtual void svg(std::ostream& out,Image* image)
 		{
 		int r=gdImageRed(image->gd(),fill);
 		int g=gdImageGreen(image->gd(),fill);
@@ -258,7 +300,8 @@ class Circle
 			<< r << "," << g << "," << b << ");fill-opacity:"<<(1.0-(a/255.0)) <<"'/>\n"
 			;
 		}
-	void html(std::ostream& out,Image* image)
+		
+	virtual void html(std::ostream& out,Image* image)
 		{
 		int r=gdImageRed(image->gd(),fill);
 		int g=gdImageGreen(image->gd(),fill);
@@ -268,9 +311,200 @@ class Circle
 			<< r << "," << g << "," << b << ","<< (1.0-(a/255.0))
 			;
 		}
+	virtual e_shape_type type()
+		{
+		return e_circle;
+		}
 	};
 
 
+class Line:public Shape
+	{
+	public:
+
+		int x;
+		int y;
+		int length;
+		int thickness;
+		Line()
+		{
+		}
+		
+	virtual ~Line()
+		{
+		
+		}
+	virtual void paint(Image* img)
+		{
+		::gdImageSetThickness(img->gd(),thickness);
+		::gdImageLine(img->gd(),
+			x,y,x+length,y+length,fill);
+		}
+	virtual Shape* clone()
+		{
+		Line* c=new Line;
+		c->x=x;
+		c->y=y;
+		c->length=length;
+		c->thickness=thickness;
+		c->fill=fill;
+		return c;
+		}
+	virtual void mute(Image* image)
+		{
+		
+		this->x+=2-RANDOM->nextInt(5);
+		this->y+=2-RANDOM->nextInt(5);
+		this->length+=2-RANDOM->nextInt(5);
+		if(this->length<0) this->length=1;
+		this->thickness+=2-RANDOM->nextInt(5);
+		if(this->thickness<0) this->thickness=1;
+		muteColor(image);
+		}
+	
+	static Shape* create(Image* image)
+		{
+		Line* c=new Line;
+		c->x= RANDOM->nextInt(imageSource->width());
+		c->y= RANDOM->nextInt(imageSource->height());
+		c->length=1+RANDOM->nextInt(max_size_radius);
+		c->thickness=1+RANDOM->nextInt(max_size_radius);
+		int alpha=RANDOM-> nextInt(255);
+		int col=::gdImageGetPixel(imageSource->gd(),c->x,c->y);
+		assert(col!=-1);
+		c->fill=::gdImageColorAllocateAlpha(
+			image->gd(),
+			gdImageRed(imageSource->gd(),col),
+			gdImageGreen(imageSource->gd(),col),
+			gdImageBlue(imageSource->gd(),col),
+			alpha
+			);
+		assert(c->fill!=-1);
+		return c;
+		}
+	virtual void svg(std::ostream& out,Image* image)
+		{
+		int r=gdImageRed(image->gd(),fill);
+		int g=gdImageGreen(image->gd(),fill);
+		int b=gdImageBlue(image->gd(),fill);
+		int a=gdImageAlpha(image->gd(),fill);
+		out << "<line x1='" << x << "' y1='" << y
+			<< "' x2='" << (x+length) << 
+			"' y2='" << (y+length) << 
+			"' style='stroke-width:"<< (thickness) << "px;fill:none;stroke:rgb("
+			<< r << "," << g << "," << b << ");stroke-opacity:"<<(1.0-(a/255.0)) <<";stroke-linecap:round;'/>\n"
+			;
+		}
+		
+	virtual void html(std::ostream& out,Image* image)
+		{
+		int r=gdImageRed(image->gd(),fill);
+		int g=gdImageGreen(image->gd(),fill);
+		int b=gdImageBlue(image->gd(),fill);
+		int a=gdImageAlpha(image->gd(),fill);
+		out  << x << "," << y << ","
+			<< length << ","<< thickness <<","
+			<< r << "," << g << "," << b << ","<< (1.0-(a/255.0))
+			;
+		}
+	virtual e_shape_type type()
+		{
+		return e_line;
+		}
+	};
+
+
+class Rect:public Shape
+	{
+	public:
+		int x;
+		int y;
+		int width;
+		int height;
+	Rect()
+		{
+		
+		}
+	virtual ~Rect()
+		{
+		
+		}
+	virtual void paint(Image* img)
+		{
+		::gdImageFilledRectangle(img->gd(),x,y,x+width,y+height,fill);
+		}
+	virtual Shape* clone()
+		{
+		Rect* c=new Rect;
+		c->x=x;
+		c->y=y;
+		c->width=width;
+		c->height=height;
+		c->fill=fill;
+		return c;
+		}
+	virtual void mute(Image* image)
+		{
+		this->x+=2-RANDOM->nextInt(5);
+		this->y+=2-RANDOM->nextInt(5);
+		this->width+=2-RANDOM->nextInt(5);
+		this->height+=2-RANDOM->nextInt(5);
+		this->width = std::max(1,this->width);
+		this->height = std::max(1,this->height);
+		muteColor(image);
+		}
+	
+	static Rect* create(Image* image)
+		{
+		Rect* c=new Rect;
+		c->x= RANDOM->nextInt(imageSource->width());
+		c->y= RANDOM->nextInt(imageSource->height());
+		c->width= RANDOM->nextInt(max_size_radius);
+		c->height= RANDOM->nextInt(max_size_radius);
+		
+		int alpha=RANDOM-> nextInt(255);
+		int col=::gdImageGetPixel(imageSource->gd(),c->x,c->y);
+		assert(col!=-1);
+		c->fill=::gdImageColorAllocateAlpha(
+			image->gd(),
+			gdImageRed(imageSource->gd(),col),
+			gdImageGreen(imageSource->gd(),col),
+			gdImageBlue(imageSource->gd(),col),
+			alpha
+			);
+		assert(c->fill!=-1);
+		return c;
+		}
+	virtual void svg(std::ostream& out,Image* image)
+		{
+		int r=gdImageRed(image->gd(),fill);
+		int g=gdImageGreen(image->gd(),fill);
+		int b=gdImageBlue(image->gd(),fill);
+		int a=gdImageAlpha(image->gd(),fill);
+		out << "<rect x='" << x << "' y='" << y
+			<< "' width='" <<  width 
+			<< "' height='" <<  height 
+			<< "' style='stroke:none;fill:rgb("
+			<< r << "," << g << "," << b << ");fill-opacity:"<<(1.0-(a/255.0)) <<"'/>\n"
+			;
+		}
+		
+	virtual void html(std::ostream& out,Image* image)
+		{
+		int r=gdImageRed(image->gd(),fill);
+		int g=gdImageGreen(image->gd(),fill);
+		int b=gdImageBlue(image->gd(),fill);
+		int a=gdImageAlpha(image->gd(),fill);
+		out  << x << "," << y << ","
+			<< width << "," << height <<","
+			<< r << "," << g << "," << b << ","<< (1.0-(a/255.0))
+			;
+		}
+	virtual e_shape_type type()
+		{
+		return e_rect;
+		}
+	};
 
 
 
@@ -279,11 +513,11 @@ class Solution
 	public:
 		long fitness;
 		int generation;
-		std::vector<Circle*> shapes;
+		std::vector<Shape*> shapes;
 		Solution():fitness(0L),generation(0)
 			{
-			
 			}
+			
 		~Solution()
 			{
 			while(!shapes.empty())
@@ -360,11 +594,30 @@ static bool compareSolutions (const Solution* s1, const Solution* s2)
 	return s1->fitness < s2->fitness;
 	}
 
-static bool compareByRadius (const Circle* s1, const Circle* s2)
+static bool compareByRadius (const Shape* s1, const Shape* s2)
 	{
-	return s1->radius > s2->radius;
+	switch(shape_type)
+		{
+		case e_circle : return ((Circle*)s1)->radius > ((Circle*)s2)->radius ;
+		case e_rect : return 	((Rect*)s1)->width * ((Rect*)s1)->height >
+				   	((Rect*)s2)->width * ((Rect*)s2)->height 
+				;
+		case e_line : return ((Line*)s1)->length > ((Line*)s2)->length ;
+		default: return s1 < s2;
+		}
 	}
 
+static Shape* makeShape(Image* image)
+	{
+	switch(shape_type)
+		{
+		case e_circle: return Circle::create(image);
+		case e_rect: return Rect::create(image);
+		case e_line: return Line::create(image);
+		default: break;
+		}
+	throw std::runtime_error("boum");
+	}
 
 static Solution* makeSolution(Image* image)
 	{
@@ -373,7 +626,8 @@ static Solution* makeSolution(Image* image)
 	while(n>0)
 		{
 		--n;
-		sol->shapes.push_back(Circle::create(image));
+		Shape* newshape=::makeShape(image);
+		sol->shapes.push_back(newshape);
 		}
 	if(RANDOM->nextBool())
 		{
@@ -400,7 +654,7 @@ static Solution* mate(Solution* sol1,Solution* sol2,Image* image)
 	if(RANDOM->nextBool())
 		{
 		int n3= RANDOM->nextInt(sol->shapes.size());
-		sol->shapes[n3]->mute();
+		sol->shapes[n3]->mute(image);
 		};
 	if(sol->shapes.size()>2 && RANDOM->nextBool())
 		{
@@ -411,14 +665,14 @@ static Solution* mate(Solution* sol1,Solution* sol2,Image* image)
 	if(RANDOM->nextBool())
 		{
 		int n3= RANDOM->nextInt(sol->shapes.size());
-		sol->shapes.insert(sol->shapes.begin()+n3,Circle::create(image));
+		sol->shapes.insert(sol->shapes.begin()+n3,makeShape(image));
 		}	
 	if(sol->shapes.size()>2 && RANDOM->nextBool())
 		{
 		int n3= RANDOM->nextInt(sol->shapes.size());
 		int n4= RANDOM->nextInt(sol->shapes.size());
-		Circle* s3= sol->shapes[n3];
-		Circle* s4= sol->shapes[n4];
+		Shape* s3= sol->shapes[n3];
+		Shape* s4= sol->shapes[n4];
 		sol->shapes[n3]=s4;
 		sol->shapes[n4]=s3;
 		}
@@ -594,6 +848,7 @@ int main(int argc,char** argv)
                         std::cerr << " -n2 <int> max shapes per solution: "<< max_shapes_per_solution << std::endl;
                         std::cerr << " -n3 <int> parents per generation: "<< parents_per_generation<< std::endl;
                         std::cerr << " -n4 <int> max size circle radius: "<<  max_size_radius << std::endl;
+                        std::cerr << " -t <type> 'c'=circle 'r'=rect 'l'=line" << std::endl;
                         return(EXIT_SUCCESS);
                         }
                  else if(std::strcmp(argv[optind],"-n1")==0)
@@ -615,6 +870,26 @@ int main(int argc,char** argv)
                 else if(std::strcmp(argv[optind],"-o")==0)
                         {
                         filenameout.assign(argv[++optind]);
+                        }
+                else if(std::strcmp(argv[optind],"-t")==0)
+                        {
+                        ++optind;
+                        if(std::strcmp(argv[optind],"c")==0)
+                        	{
+                        	shape_type=e_circle;
+                        	}
+                        else if(std::strcmp(argv[optind],"r")==0)
+                        	{
+                        	shape_type=e_rect;
+                        	}
+                         else if(std::strcmp(argv[optind],"l")==0)
+                        	{
+                        	shape_type=e_line;
+                        	}
+                        else 	{
+                        	 std::cerr << "unknown shape type '"<<argv[optind] << "'" << std::endl;
+                        	return(EXIT_FAILURE);
+                        	}
                         } 
                 else if(std::strcmp(argv[optind],"--")==0)
                         {
