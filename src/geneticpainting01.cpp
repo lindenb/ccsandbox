@@ -87,7 +87,7 @@ function initLW0gTUxECg()
 #include <cerrno>
 #include <pthread.h>
 enum e_shape_type {
-	e_circle,e_rect,e_line
+	e_circle,e_rect,e_line,e_arc
 	};
 	
 static int min_shapes_per_solution=100;
@@ -326,6 +326,7 @@ class Line:public Shape
 		int y;
 		int length;
 		int thickness;
+		int side;
 		Line()
 		{
 		}
@@ -338,7 +339,10 @@ class Line:public Shape
 		{
 		::gdImageSetThickness(img->gd(),thickness);
 		::gdImageLine(img->gd(),
-			x,y,x+length,y+length,fill);
+			x,y,
+			x+length,
+			y+length*side,
+			fill);
 		}
 	virtual Shape* clone()
 		{
@@ -348,11 +352,11 @@ class Line:public Shape
 		c->length=length;
 		c->thickness=thickness;
 		c->fill=fill;
+		c->side=side;
 		return c;
 		}
 	virtual void mute(Image* image)
 		{
-		
 		this->x+=2-RANDOM->nextInt(5);
 		this->y+=2-RANDOM->nextInt(5);
 		this->length+=2-RANDOM->nextInt(5);
@@ -369,6 +373,7 @@ class Line:public Shape
 		c->y= RANDOM->nextInt(imageSource->height());
 		c->length=1+RANDOM->nextInt(max_size_radius);
 		c->thickness=1+RANDOM->nextInt(max_size_radius);
+		c->side=(RANDOM->nextBool()?-1:1);
 		int alpha=RANDOM-> nextInt(255);
 		int col=::gdImageGetPixel(imageSource->gd(),c->x,c->y);
 		assert(col!=-1);
@@ -388,11 +393,12 @@ class Line:public Shape
 		int g=gdImageGreen(image->gd(),fill);
 		int b=gdImageBlue(image->gd(),fill);
 		int a=gdImageAlpha(image->gd(),fill);
-		out << "<line x1='" << x << "' y1='" << y
+		out << "<line x1='" << x
+			<< "' y1='" << y
 			<< "' x2='" << (x+length) << 
-			"' y2='" << (y+length) << 
+			"' y2='" << y+length*side << 
 			"' style='stroke-width:"<< (thickness) << "px;fill:none;stroke:rgb("
-			<< r << "," << g << "," << b << ");stroke-opacity:"<<(1.0-(a/255.0)) <<";stroke-linecap:round;'/>\n"
+			<< r << "," << g << "," << b << ");stroke-opacity:"<<(1.0-(a/255.0)) <<";'/>\n"
 			;
 		}
 		
@@ -403,7 +409,7 @@ class Line:public Shape
 		int b=gdImageBlue(image->gd(),fill);
 		int a=gdImageAlpha(image->gd(),fill);
 		out  << x << "," << y << ","
-			<< length << ","<< thickness <<","
+			<< length <<"," << side << ","<< thickness <<","
 			<< r << "," << g << "," << b << ","<< (1.0-(a/255.0))
 			;
 		}
@@ -506,6 +512,103 @@ class Rect:public Shape
 		}
 	};
 
+class Arc:public Shape
+	{
+	public:
+
+		int cx;
+		int cy;
+		int radius;
+		int start;
+		int end;
+		int thickness;
+		Arc()
+		{
+		
+		}
+	virtual ~Arc()
+		{
+		
+		}
+	virtual void paint(Image* img)
+		{
+		 ::gdImageSetThickness(img->gd(),thickness);
+		::gdImageArc(img->gd(),cx,cy,radius,radius,start,end,fill);
+		}
+	virtual Shape* clone()
+		{
+		Arc* c=new Arc;
+		c->cx=cx;
+		c->cy=cy;
+		c->radius=radius;
+		c->thickness=thickness;
+		c->start=start;
+		c->end=end;
+		c->fill=fill;
+		return c;
+		}
+	virtual void mute(Image* image)
+		{
+		this->cx+=2-RANDOM->nextInt(5);
+		this->cy+=2-RANDOM->nextInt(5);
+		this->radius+=2-RANDOM->nextInt(5);
+		this->radius=std::max(1,this->radius);
+		this->thickness+=1-RANDOM->nextInt(3);
+		this->thickness=std::max(1,this->thickness);
+		this->start+=2-RANDOM->nextInt(5);
+		this->end+=2-RANDOM->nextInt(5);
+		muteColor(image);
+		}
+	
+	static Arc* create(Image* image)
+		{
+		Arc* c=new Arc;
+		c->cx= RANDOM->nextInt(imageSource->width());
+		c->cy= RANDOM->nextInt(imageSource->height());
+		c->radius=1+RANDOM->nextInt(max_size_radius);
+		c->thickness=1+RANDOM->nextInt(max_size_radius);
+		c->start=RANDOM->nextInt(360);
+		c->end=RANDOM->nextInt(360);
+		int alpha=RANDOM-> nextInt(255);
+		int col=::gdImageGetPixel(imageSource->gd(),c->cx,c->cy);
+		assert(col!=-1);
+		c->fill=::gdImageColorAllocateAlpha(
+			image->gd(),
+			gdImageRed(imageSource->gd(),col),
+			gdImageGreen(imageSource->gd(),col),
+			gdImageBlue(imageSource->gd(),col),
+			alpha
+			);
+		assert(c->fill!=-1);
+		return c;
+		}
+	virtual void svg(std::ostream& out,Image* image)
+		{
+		int r=gdImageRed(image->gd(),fill);
+		int g=gdImageGreen(image->gd(),fill);
+		int b=gdImageBlue(image->gd(),fill);
+		int a=gdImageAlpha(image->gd(),fill);
+		out << "<path d='M"<< cx <<"," << cy << " A" << radius << "," << radius << " " << radius << "' style='stroke:none;fill:rgb("
+			<< r << "," << g << "," << b << ");fill-opacity:"<<(1.0-(a/255.0)) <<"'/>\n"
+			;
+		}
+		
+	virtual void html(std::ostream& out,Image* image)
+		{
+		int r=gdImageRed(image->gd(),fill);
+		int g=gdImageGreen(image->gd(),fill);
+		int b=gdImageBlue(image->gd(),fill);
+		int a=gdImageAlpha(image->gd(),fill);
+		out  << cx << "," << cy << "," << radius << ","
+			<< r << "," << g << "," << b << ","<< (1.0-(a/255.0))
+			;
+		}
+	virtual e_shape_type type()
+		{
+		return e_arc;
+		}
+	};
+
 
 
 class Solution
@@ -599,6 +702,7 @@ static bool compareByRadius (const Shape* s1, const Shape* s2)
 	switch(shape_type)
 		{
 		case e_circle : return ((Circle*)s1)->radius > ((Circle*)s2)->radius ;
+		case e_arc : return ((Arc*)s1)->radius > ((Arc*)s2)->radius ;
 		case e_rect : return 	((Rect*)s1)->width * ((Rect*)s1)->height >
 				   	((Rect*)s2)->width * ((Rect*)s2)->height 
 				;
@@ -614,6 +718,7 @@ static Shape* makeShape(Image* image)
 		case e_circle: return Circle::create(image);
 		case e_rect: return Rect::create(image);
 		case e_line: return Line::create(image);
+		case e_arc: return Arc::create(image);
 		default: break;
 		}
 	throw std::runtime_error("boum");
@@ -848,7 +953,7 @@ int main(int argc,char** argv)
                         std::cerr << " -n2 <int> max shapes per solution: "<< max_shapes_per_solution << std::endl;
                         std::cerr << " -n3 <int> parents per generation: "<< parents_per_generation<< std::endl;
                         std::cerr << " -n4 <int> max size circle radius: "<<  max_size_radius << std::endl;
-                        std::cerr << " -t <type> 'c'=circle 'r'=rect 'l'=line" << std::endl;
+                        std::cerr << " -t <type> 'c'=circle 'r'=rect 'l'=line 'a'=arc" << std::endl;
                         return(EXIT_SUCCESS);
                         }
                  else if(std::strcmp(argv[optind],"-n1")==0)
@@ -885,6 +990,10 @@ int main(int argc,char** argv)
                          else if(std::strcmp(argv[optind],"l")==0)
                         	{
                         	shape_type=e_line;
+                        	}
+                        else if(std::strcmp(argv[optind],"a")==0)
+                        	{
+                        	shape_type=e_arc;
                         	}
                         else 	{
                         	 std::cerr << "unknown shape type '"<<argv[optind] << "'" << std::endl;
