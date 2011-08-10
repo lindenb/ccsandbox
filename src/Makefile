@@ -2,8 +2,18 @@ CFLAGS=-Wall -I../../cclindenb/src/core
 CC=gcc
 CPP=g++
 FLEX=flex
-all:../bin/json2xml ../bin/fasta2term ../bin/text2html ../bin/xmlpath ../bin/geneticpainting01
-	
+all:	../bin/mean ../bin/json2xml \
+	../bin/fasta2term ../bin/text2html \
+	../bin/text2c ../bin/xmlpath \
+	../bin/opensearch \
+	../bin/escapeuri
+
+../bin/escapeuri:escapeuri.c
+	$(CC) -o $@ -Wall `curl-config --cflags  --libs ` $< 
+../bin/opensearch:opensearch.cpp
+	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
+../bin/mean:mean.c ../bin
+	$(CC) -o $@ $(CFLAGS) $<
 ../bin/geneticpainting01:geneticpainting01.cpp
 	$(CPP) -o $@ -O3 $<  -lgd -lpthread
 	
@@ -29,12 +39,18 @@ all:../bin/json2xml ../bin/fasta2term ../bin/text2html ../bin/xmlpath ../bin/gen
 	$(FLEX) -f -B --read  $< 
 	$(CC) -o $@ lex.yy.c
 	rm lex.yy.c
+../bin/syntaxhighlighter:syntaxhighlighter.l
+	flex -o lex.yy.cc $<
+	g++ -o $@ src/lex.yy.cc -lfl
 	
 a.out:jsonql.cpp jsonql.h json2xml.l
 	flex  json2xml.l
 	$(CPP)  -o $@ jsonql.cpp lex.yy.c -lz
 	
 test:curvi
+
+../bin:
+	mkdir $@
 
 curvi:curviligne.cpp
 	g++ -o a.out curviligne.cpp $(CFLAGS) `gdlib-config --cflags --libs ` -lm

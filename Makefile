@@ -1,5 +1,10 @@
-bin/syntaxhighlighter:bin src/syntaxhighlighter.l
-	flex -o src/lex.yy.cc src/syntaxhighlighter.l
-	g++ -o $@ src/lex.yy.cc -lfl
+CPP=g++
+CC=gcc
+CFLAGS=-Wall -O3
+all:bin
+	(cd src; make)
+
 bin:
 	mkdir -p bin
+clean:
+	rm -rf bin; (cd src; make clean)
