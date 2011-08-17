@@ -6,13 +6,16 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/fasta2term ../bin/text2html \
 	../bin/text2c ../bin/xmlpath \
 	../bin/opensearch \
-	../bin/escapeuri
+	../bin/escapeuri \
+	../bin/mergexml.cpp
 
+../bin/mergexml:mergexml.cpp
+	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
 ../bin/escapeuri:escapeuri.c
 	$(CC) -o $@ -Wall `curl-config --cflags  --libs ` $< 
 ../bin/opensearch:opensearch.cpp
 	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
-../bin/mean:mean.c ../bin
+../bin/mean:mean.c
 	$(CC) -o $@ $(CFLAGS) $<
 ../bin/geneticpainting01:geneticpainting01.cpp
 	$(CPP) -o $@ -O3 $<  -lgd -lpthread
