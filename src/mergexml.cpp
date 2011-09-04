@@ -38,6 +38,11 @@ case XML_READER_TYPE_COMMENT: \
 	xmlTextWriterWriteComment(writer,xmlTextReaderConstValue(reader)); \
 	break; \
 	} \
+case XML_READER_TYPE_DOCUMENT_TYPE:\
+	{\
+	cerr << "ignoring DTD\n";\
+	break; \
+	}\
 default:\
 	{\
 	fprintf(stderr,"Node type (%d) not handled:\n",xmlTextReaderNodeType(reader));\
@@ -171,25 +176,31 @@ int main(int argc,char** argv)
          int optind=1;
          State state;
 	 LIBXML_TEST_VERSION
+	 bool replace=false;
 	 char* inputFile=NULL;
 	 char* outputFile=NULL;
-	 
+	 char tmpFile[L_tmpnam];
 	 state.ignore_root=false;
 	 
 	/* loop over args */
          while(optind < argc)
                 {
-                if(strcmp(argv[optind],"-h")==0)
+                if(strcmp(argv[optind],"-h")==0 || strcmp(argv[optind],"--help")==0)
                         {
                         cout << argv[0] << ": Pierre Lindenbaum PHD. 2010." << endl;
                         cout << "Compilation: "<< __DATE__ << " at " << __TIME__ << "." << endl;
                       	cout << "Options:\n";
                       	cout << "  -i <xml-in> (required)\n";
                       	cout << "  -o <xml-out> (default:stdout)\n";
+                      	cout << "  --replace replace xml-in\n";
                       	cout << "  -r ignore root of XML docs\n";
                       	cout << "xml1, xml2, ....xmln\n";
                         return(EXIT_SUCCESS);
                         }
+                else if(strcmp(argv[optind],"--replace")==0)
+                        {
+                        replace=true;
+                        } 
                 else if(strcmp(argv[optind],"-r")==0)
                         {
                         state.ignore_root=true;
@@ -218,16 +229,24 @@ int main(int argc,char** argv)
                         }
                 ++optind;
                 }
+                
         if(inputFile==NULL)
         	{
         	cerr << "input file was not specified\n";
         	return(EXIT_FAILURE);
         	}
-        if(outputFile!=NULL && strcmp(inputFile,outputFile)==0)
-        	{
-        	cerr << "input file == output file\n";
-        	return EXIT_FAILURE;
-        	}
+         if(replace)
+         	{
+         	if(outputFile==NULL)
+         		{
+         		outputFile=inputFile;
+         		}
+         	else if(strcmp(outputFile,inputFile)!=0)
+         		{
+         		cerr << "'replace' specified but xml-in != xml-out.\n";
+        		return(EXIT_FAILURE);
+         		}
+         	}
 	state.writer=NULL;
 	state.reader=NULL;
 	state.argv=argv;
@@ -244,7 +263,25 @@ int main(int argc,char** argv)
                 return(EXIT_FAILURE);
 		}
 	//create writer
-	state.writer= xmlNewTextWriterFilename((outputFile==NULL?"-":outputFile), 0);
+	state.writer= NULL;
+	if(outputFile==NULL)
+		{
+		state.writer= xmlNewTextWriterFilename("-", 0);
+		}
+	else if(strcmp(inputFile,outputFile)==0)
+		{
+		if(tmpnam(tmpFile)==NULL)
+        		{
+        		cerr << "cannot create temporary file\n";
+        		return(EXIT_FAILURE);
+        		}
+        	state.writer= xmlNewTextWriterFilename(tmpFile, 0);
+		}
+	else
+		{
+		state.writer= xmlNewTextWriterFilename(outputFile, 0);
+		}
+	
 	if (state.writer== NULL)
 		{
 		cerr << "xmlNewTextWriterFilename failed." << endl;
@@ -268,6 +305,15 @@ int main(int argc,char** argv)
 	xmlCleanupParser();
 	xmlMemoryDump();
 	
+	if(outputFile!=NULL && strcmp(inputFile,outputFile)==0)
+		{
+		if(rename(tmpFile,outputFile)!=0)
+			{
+			remove(tmpFile);
+			cerr << "Cannot move " << tmpFile << " to "<< outputFile << " " << strerror(errno) << endl;
+			return(EXIT_FAILURE);
+			}
+		}
 	return EXIT_SUCCESS;
         }
 

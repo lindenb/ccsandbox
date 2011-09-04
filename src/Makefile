@@ -7,7 +7,7 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/text2c ../bin/xmlpath \
 	../bin/opensearch \
 	../bin/escapeuri \
-	../bin/mergexml.cpp
+	../bin/mergexml
 
 ../bin/mergexml:mergexml.cpp
 	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
