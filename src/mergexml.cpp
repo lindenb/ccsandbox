@@ -3,10 +3,14 @@
  *	Pierre Lindenbaum PhD
  * Contact:
  *	plindenbaum@yahoo.fr
+ * Date:
+ *	Sept 2011
  * WWW:
  *	http://plindenbaum.blogspot.com
  * Motivation:
- *	append a XML file at the end of another one
+ *	appends a XML file at the end of another one
+ * Compilation:
+ *	g++ -o mergexml -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` mergexml.cpp
  */
 #include <cstdio>
 #include <cstring>
@@ -187,14 +191,14 @@ int main(int argc,char** argv)
                 {
                 if(strcmp(argv[optind],"-h")==0 || strcmp(argv[optind],"--help")==0)
                         {
-                        cout << argv[0] << ": Pierre Lindenbaum PHD. 2010." << endl;
+                        cout << argv[0] << ": Pierre Lindenbaum PHD. 2011." << endl;
                         cout << "Compilation: "<< __DATE__ << " at " << __TIME__ << "." << endl;
+                        cout << "Usage:\n\t" << argv[0]<< " [options] -i database.xml xml1, xml2, ....xmln\n";
                       	cout << "Options:\n";
                       	cout << "  -i <xml-in> (required)\n";
                       	cout << "  -o <xml-out> (default:stdout)\n";
                       	cout << "  --replace replace xml-in\n";
                       	cout << "  -r ignore root of XML docs\n";
-                      	cout << "xml1, xml2, ....xmln\n";
                         return(EXIT_SUCCESS);
                         }
                 else if(strcmp(argv[optind],"--replace")==0)
@@ -232,7 +236,7 @@ int main(int argc,char** argv)
                 
         if(inputFile==NULL)
         	{
-        	cerr << "input file was not specified\n";
+        	cerr << "input file was not specified. Type option '-h' for more info.\n";
         	return(EXIT_FAILURE);
         	}
          if(replace)
