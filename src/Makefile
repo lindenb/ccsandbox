@@ -7,8 +7,15 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/text2c ../bin/xmlpath \
 	../bin/opensearch \
 	../bin/escapeuri \
-	../bin/mergexml
+	../bin/mergexml \
+	../bin/manhattan
 
+hershey:
+	curl -s -o hershey.zip "http://paulbourke.net/dataformats/hershey/hershey.zip"
+	unzip hershey.zip hershey
+	rm hershey.zip
+../bin/manhattan:manhattan.cpp
+	$(CPP) -o $@ -Wall $< -lz
 ../bin/mergexml:mergexml.cpp
 	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
 ../bin/escapeuri:escapeuri.c
