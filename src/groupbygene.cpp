@@ -356,6 +356,7 @@ int main(int argc,char** argv)
    			cerr << "  --pos POS position column index: default "<< (app.poscol+1) << "\n";
    			cerr << "  --ref REF reference allele column index: default "<< (app.refcol+1) << "\n";
    			cerr << "  --alt ALT alternate allele column index: default "<< (app.altcol+1) << "\n";
+   			cerr << "(stdin|vcf|vcf.gz)\n";
    			exit(EXIT_FAILURE);
    			}
    		SETINDEX("--sample",samplecol)
