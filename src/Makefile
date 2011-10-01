@@ -11,12 +11,15 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/manhattan \
 	../bin/groupbygene \
 	../bin/verticalize \
-	../bin/colgrep 
+	../bin/colgrep \
+	../bin/samplespersnp
 
 hershey:
 	curl -s -o hershey.zip "http://paulbourke.net/dataformats/hershey/hershey.zip"
 	unzip hershey.zip hershey
 	rm hershey.zip
+../bin/samplespersnp:samplespersnp.cpp
+	$(CPP) -o $@ -Wall $< -lz
 ../bin/verticalize:verticalize.cpp
 	$(CPP) -o $@ -Wall $< -lz
 ../bin/colgrep:colgrep.cpp
