@@ -8,13 +8,16 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/opensearch \
 	../bin/escapeuri \
 	../bin/mergexml \
-	../bin/manhattan
+	../bin/manhattan \
+	../bin/groupbygene
 
 hershey:
 	curl -s -o hershey.zip "http://paulbourke.net/dataformats/hershey/hershey.zip"
 	unzip hershey.zip hershey
 	rm hershey.zip
 ../bin/manhattan:manhattan.cpp
+	$(CPP) -o $@ -Wall $< -lz
+../bin/groupbygene: groupbygene.cpp
 	$(CPP) -o $@ -Wall $< -lz
 ../bin/mergexml:mergexml.cpp
 	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
