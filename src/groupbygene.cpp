@@ -123,6 +123,7 @@ class GroupByGene
 	map<string,GeneInfo*> gene2info;
 	map<string,SampleInfo*> sample2info;
 	bool use_ref_alt;
+	bool first_line_header;
 
 
 
@@ -140,6 +141,7 @@ class GroupByGene
 	    genecol=-1;
 	    samplecol=-1;
 	    use_ref_alt=true;
+	    first_line_header=true;
 	    }
 	~GroupByGene()
 	    {
@@ -205,11 +207,16 @@ class GroupByGene
 		)
 		{
 		GeneInfo* gene=r1->second;
+		size_t count_samples(0);
+		for(size_t i=0;i< gene->sample2count.size();++i)
+		    {
+		    if(gene->sample2count[i]) count_samples++;
+		    }
 		cout << gene->geneName << "\t"
 			<< gene->chrom << "\t"
 			<< gene->chromStart << "\t"
-			<< gene->chromEnd
-			<< gene->sample2count.size()
+			<< gene->chromEnd << "\t"
+			<< count_samples << "\t"
 			<< gene->mutations.size()
 			;
 		for(map<string,SampleInfo*>::iterator r2=sample2info.begin();
@@ -236,15 +243,17 @@ class GroupByGene
 	    {
 	    vector<string> header;
 	    string line;
-	    if(readline(in,line)) THROW("Cannot read header");
-	    split(line,header);
-	    CHECK_COL_INDEX(chromcol,header);
-	    CHECK_COL_INDEX(poscol,header);
-	    if(use_ref_alt) CHECK_COL_INDEX(refcol,header);
-	    if(use_ref_alt) CHECK_COL_INDEX(altcol,header);
-	    CHECK_COL_INDEX(genecol,header);
-	    CHECK_COL_INDEX(samplecol,header);
-
+	    if(first_line_header)
+		{
+		if(readline(in,line)) THROW("Cannot read header");
+		split(line,header);
+		CHECK_COL_INDEX(chromcol,header);
+		CHECK_COL_INDEX(poscol,header);
+		if(use_ref_alt) CHECK_COL_INDEX(refcol,header);
+		if(use_ref_alt) CHECK_COL_INDEX(altcol,header);
+		CHECK_COL_INDEX(genecol,header);
+		CHECK_COL_INDEX(samplecol,header);
+		}
 	    while(readline(in,line))
 		{
 		if(line.empty()) continue;
@@ -290,7 +299,7 @@ class GroupByGene
 		    cerr << "Gene name empty in "<< line << endl;
 		    continue;
 		    }
-		GeneInfo* geneInfo;
+		GeneInfo* geneInfo=NULL;
 		map<string,GeneInfo*>::iterator r1=gene2info.find(geneName);
 		if(r1==gene2info.end())
 		    {
@@ -303,6 +312,7 @@ class GroupByGene
 		    }
 		else
 		    {
+		    geneInfo=(*r1).second;
 		    if(geneInfo->chrom.compare(tokens[chromcol])!=0)
 			{
 			THROW("Gene "<< geneName << " defined on two chromosome "<<
@@ -356,6 +366,7 @@ int main(int argc,char** argv)
    			cerr << "  --pos POS position column index: default "<< (app.poscol+1) << "\n";
    			cerr << "  --ref REF reference allele column index: default "<< (app.refcol+1) << "\n";
    			cerr << "  --alt ALT alternate allele column index: default "<< (app.altcol+1) << "\n";
+   			cerr << "  --no-header first line is NOT header.\n";
    			cerr << "(stdin|vcf|vcf.gz)\n";
    			exit(EXIT_FAILURE);
    			}
@@ -365,6 +376,10 @@ int main(int argc,char** argv)
    		SETINDEX("--ref",refcol)
    		SETINDEX("--alt",altcol)
    		SETINDEX("--gene",genecol)
+   		else if(std::strcmp(argv[optind],"--no-header")==0)
+		    {
+		    app.first_line_header=false;
+		    }
    		else if(std::strcmp(argv[optind],"--norefalt")==0)
    			{
    			app.use_ref_alt=false;
