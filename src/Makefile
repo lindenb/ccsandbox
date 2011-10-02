@@ -1,4 +1,5 @@
 CFLAGS=-Wall -I../../cclindenb/src/core
+OPTIMIZE=-O3 -Wall
 CC=gcc
 CPP=g++
 FLEX=flex
@@ -12,28 +13,32 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/groupbygene \
 	../bin/verticalize \
 	../bin/colgrep \
-	../bin/samplespersnp
+	../bin/samplespersnp \
+	../bin/normalizechrom 
+	
 
 hershey:
 	curl -s -o hershey.zip "http://paulbourke.net/dataformats/hershey/hershey.zip"
 	unzip hershey.zip hershey
 	rm hershey.zip
+../bin/normalizechrom  : normalizechrom.c
+	$(CC)  -o $@ $(OPTIMIZE) $< 
 ../bin/samplespersnp:samplespersnp.cpp
-	$(CPP) -o $@ -Wall $< -lz
+	$(CPP)  -o $@ $(OPTIMIZE) $< -lz
 ../bin/verticalize:verticalize.cpp
-	$(CPP) -o $@ -Wall $< -lz
+	$(CPP) -o $@ $(OPTIMIZE) $< -lz
 ../bin/colgrep:colgrep.cpp
-	$(CPP) -o $@ -Wall $< -lz
+	$(CPP) -o $@ $(OPTIMIZE) $< -lz
 ../bin/manhattan:manhattan.cpp
 	$(CPP) -o $@ -Wall $< -lz
 ../bin/groupbygene: groupbygene.cpp
-	$(CPP) -o $@ -Wall $< -lz
+	$(CPP) -o $@ $(OPTIMIZE) $< -lz
 ../bin/mergexml:mergexml.cpp
-	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
+	$(CPP) -o $@ $(OPTIMIZE) `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
 ../bin/escapeuri:escapeuri.c
-	$(CC) -o $@ -Wall `curl-config --cflags  --libs ` $< 
+	$(CC) -o $@ $(OPTIMIZE) `curl-config --cflags  --libs ` $< 
 ../bin/opensearch:opensearch.cpp
-	$(CPP) -o $@ -Wall `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
+	$(CPP) -o $@ $(OPTIMIZE) `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
 ../bin/mean:mean.c
 	$(CC) -o $@ $(CFLAGS) $<
 ../bin/geneticpainting01:geneticpainting01.cpp
