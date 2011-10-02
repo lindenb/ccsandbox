@@ -14,13 +14,16 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/verticalize \
 	../bin/colgrep \
 	../bin/samplespersnp \
-	../bin/normalizechrom 
+	../bin/normalizechrom \
+	../bin/mysqlucsc
 	
 
 hershey:
 	curl -s -o hershey.zip "http://paulbourke.net/dataformats/hershey/hershey.zip"
 	unzip hershey.zip hershey
 	rm hershey.zip
+../bin/mysqlucsc : mysqlucsc.cpp
+	$(CPP)  -o $@ $(OPTIMIZE) `mysql_config --cflags --libs` $< 
 ../bin/normalizechrom  : normalizechrom.c
 	$(CC)  -o $@ $(OPTIMIZE) $< 
 ../bin/samplespersnp:samplespersnp.cpp
