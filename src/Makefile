@@ -15,13 +15,25 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/colgrep \
 	../bin/samplespersnp \
 	../bin/normalizechrom \
-	../bin/mysqlucsc
+	../bin/mysqlucsc \
+	../bin/sqlitedatastore \
+	../bin/leveldatastore 
 	
 
 hershey:
 	curl -s -o hershey.zip "http://paulbourke.net/dataformats/hershey/hershey.zip"
 	unzip hershey.zip hershey
 	rm hershey.zip
+../bin/sqlitedatastore: datastore.cpp
+	$(CPP)  -o $@ $(OPTIMIZE) -lsqlite3
+../bin/leveldatastore : datastore.cpp
+	if test "$(LEVELDB)" = "" ; then \
+		echo "variable LEVELDB NOT DEFINED";\
+	else \
+		$(CPP) -L $(LEVELDB) -I $(LEVELDB)/include  -DLEVELDB_VERSION $< -o $@ $(OPTIMIZE) -lz -lleveldb -lpthread ;\
+	fi
+
+../bin/sqlitedatastore: datastore.cpp
 ../bin/mysqlucsc : mysqlucsc.cpp
 	$(CPP)  -o $@ $(OPTIMIZE) `mysql_config --cflags --libs` $< 
 ../bin/normalizechrom  : normalizechrom.c
