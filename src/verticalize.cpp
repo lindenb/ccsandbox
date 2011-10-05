@@ -49,7 +49,6 @@ class Verticalize
 	    }
 	~Verticalize()
 	    {
-
 	    }
 
 	bool readline(gzFile in,std::string& line)
@@ -147,6 +146,15 @@ class Verticalize
 	    }
     };
 
+void usage(const char* prg)
+	{
+	cerr << prg << "Pierre Lindenbaum PHD. 2011.\n";
+	cerr << "Compilation: "<<__DATE__<<"  at "<< __TIME__<<".\n";
+	cerr << "Options:\n";
+	cerr << "  -d or --delim (char) delimiter default:tab\n";
+	cerr << "  -n first line is NOT the header.\n";
+	cerr << "(stdin|file|file.gz)\n";
+	}
 
 int main(int argc,char** argv)
     {
@@ -156,13 +164,8 @@ int main(int argc,char** argv)
    		{
    		if(std::strcmp(argv[optind],"-h")==0)
    			{
-   			cerr << argv[0] << "Pierre Lindenbaum PHD. 2011.\n";
-   			cerr << "Compilation: "<<__DATE__<<"  at "<< __TIME__<<".\n";
-   			cerr << "Options:\n";
-   			cerr << "  -d or --delim (char) delimiter default:tab\n";
-   			cerr << "  -n first line is NOT the header.\n";
-   			cerr << "(stdin|file|file.gz)\n";
-   			exit(EXIT_FAILURE);
+   			usage(argv[0]);
+   			return EXIT_FAILURE;
    			}
 
    		else if(std::strcmp(argv[optind],"-n")==0)
@@ -177,6 +180,7 @@ int main(int argc,char** argv)
 			if(strlen(p)!=1)
 			    {
 			    cerr << "Bad delimiter \""<< p << "\"\n";
+			    usage(argv[0]);
 			    exit(EXIT_FAILURE);
 			    }
 			app.delim=p[0];
@@ -184,6 +188,7 @@ int main(int argc,char** argv)
    		else if(argv[optind][0]=='-')
    			{
    			fprintf(stderr,"unknown option '%s'\n",argv[optind]);
+   			usage(argv[0]);
    			exit(EXIT_FAILURE);
    			}
    		else

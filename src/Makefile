@@ -25,7 +25,7 @@ hershey:
 	unzip hershey.zip hershey
 	rm hershey.zip
 ../bin/sqlitedatastore: datastore.cpp
-	$(CPP)  -o $@ $(OPTIMIZE) -lsqlite3
+	$(CPP) $< -o $@ $(OPTIMIZE) -lsqlite3
 ../bin/leveldatastore : datastore.cpp
 	if test "$(LEVELDB)" = "" ; then \
 		echo "variable LEVELDB NOT DEFINED";\
