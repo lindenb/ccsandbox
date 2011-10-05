@@ -245,7 +245,7 @@ class GroupByGene
 	    string line;
 	    if(first_line_header)
 		{
-		if(readline(in,line)) THROW("Cannot read header");
+		if(!readline(in,line)) THROW("Cannot read header");
 		split(line,header);
 		CHECK_COL_INDEX(chromcol,header);
 		CHECK_COL_INDEX(poscol,header);
@@ -347,6 +347,23 @@ class GroupByGene
 #define SHOW_OPT(col) \
 	cerr << "  --"<< cols<< " (column index)\n";
 
+static void usage(const char* prg,GroupByGene& app)
+	{
+	cerr << prg << "Pierre Lindenbaum PHD. 2011.\n";
+	cerr << "Compilation: "<<__DATE__<<"  at "<< __TIME__<<".\n";
+	cerr << "Options:\n";
+	cerr << "  --delim (char) delimiter default:tab\n";
+	cerr << "  --norefalt : don't look at REF and ALT\n";
+	cerr << "  --sample SAMPLE column index\n";
+	cerr << "  --gene GENE column index\n";
+	cerr << "  --chrom CHROM column index: default "<< (app.chromcol+1) << "\n";
+	cerr << "  --pos POS position column index: default "<< (app.poscol+1) << "\n";
+	cerr << "  --ref REF reference allele column index: default "<< (app.refcol+1) << "\n";
+	cerr << "  --alt ALT alternate allele column index: default "<< (app.altcol+1) << "\n";
+	cerr << "  --no-header first line is NOT header.\n";
+	cerr << "(stdin|vcf|vcf.gz)\n";
+	}
+
 int main(int argc,char** argv)
     {
     GroupByGene app;
@@ -355,20 +372,8 @@ int main(int argc,char** argv)
    		{
    		if(std::strcmp(argv[optind],"-h")==0)
    			{
-   			cerr << argv[0] << "Pierre Lindenbaum PHD. 2011.\n";
-   			cerr << "Compilation: "<<__DATE__<<"  at "<< __TIME__<<".\n";
-   			cerr << "Options:\n";
-   			cerr << "  --delim (char) delimiter default:tab\n";
-   			cerr << "  --norefalt : don't look at REF and ALT\n";
-   			cerr << "  --sample SAMPLE column index\n";
-   			cerr << "  --gene GENE column index\n";
-   			cerr << "  --chrom CHROM column index: default "<< (app.chromcol+1) << "\n";
-   			cerr << "  --pos POS position column index: default "<< (app.poscol+1) << "\n";
-   			cerr << "  --ref REF reference allele column index: default "<< (app.refcol+1) << "\n";
-   			cerr << "  --alt ALT alternate allele column index: default "<< (app.altcol+1) << "\n";
-   			cerr << "  --no-header first line is NOT header.\n";
-   			cerr << "(stdin|vcf|vcf.gz)\n";
-   			exit(EXIT_FAILURE);
+   			usage(argv[0],app);
+   			return (EXIT_FAILURE);
    			}
    		SETINDEX("--sample",samplecol)
    		SETINDEX("--chrom",chromcol)
@@ -390,14 +395,16 @@ int main(int argc,char** argv)
 			if(strlen(p)!=1)
 			    {
 			    cerr << "Bad delimiter \""<< p << "\"\n";
-			    exit(EXIT_FAILURE);
+			    usage(argv[0],app);
+			    return(EXIT_FAILURE);
 			    }
 			app.delim=p[0];
 			}
    		else if(argv[optind][0]=='-')
    			{
    			fprintf(stderr,"unknown option '%s'\n",argv[optind]);
-   			exit(EXIT_FAILURE);
+   			usage(argv[0],app);
+   			return (EXIT_FAILURE);
    			}
    		else
    			{
@@ -408,11 +415,13 @@ int main(int argc,char** argv)
     if(app.genecol==-1)
 	{
 	cerr << "Undefined gene column."<< endl;
+	usage(argv[0],app);
 	return (EXIT_FAILURE);
 	}
     if(app.samplecol==-1)
     	{
     	cerr << "Undefined sample column."<< endl;
+    	usage(argv[0],app);
     	return (EXIT_FAILURE);
     	}
     if(optind==argc)
