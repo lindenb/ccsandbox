@@ -185,7 +185,7 @@ int main(int argc,char** argv)
 	 char* outputFile=NULL;
 	 char tmpFile[L_tmpnam];
 	 state.ignore_root=false;
-	 
+	 tmpFile[0]=0;
 	/* loop over args */
          while(optind < argc)
                 {
@@ -274,9 +274,10 @@ int main(int argc,char** argv)
 		}
 	else if(strcmp(inputFile,outputFile)==0)
 		{
-		if(tmpnam(tmpFile)==NULL)
+		strcpy(tmpFile,"tmpXmlXXXXXX");
+		if(mkstemp(tmpFile)!=0)
         		{
-        		cerr << "cannot create temporary file\n";
+        		cerr << "cannot create temporary file " << strerror(errno) << "\n";
         		return(EXIT_FAILURE);
         		}
         	state.writer= xmlNewTextWriterFilename(tmpFile, 0);
