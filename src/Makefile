@@ -10,11 +10,8 @@ all:	../bin/mean ../bin/json2xml \
 	../bin/escapeuri \
 	../bin/mergexml \
 	../bin/manhattan \
-	../bin/groupbygene \
 	../bin/verticalize \
 	../bin/colgrep \
-	../bin/samplespersnp \
-	../bin/normalizechrom \
 	../bin/mysqlucsc \
 	../bin/sqlitedatastore \
 	../bin/leveldatastore 
@@ -36,18 +33,12 @@ hershey:
 ../bin/sqlitedatastore: datastore.cpp
 ../bin/mysqlucsc : mysqlucsc.cpp
 	$(CPP)  -o $@ $(OPTIMIZE) `mysql_config --cflags --libs` $< 
-../bin/normalizechrom  : normalizechrom.c
-	$(CC)  -o $@ $(OPTIMIZE) $< 
-../bin/samplespersnp:samplespersnp.cpp
-	$(CPP)  -o $@ $(OPTIMIZE) $< -lz
 ../bin/verticalize:verticalize.cpp
 	$(CPP) -o $@ $(OPTIMIZE) $< -lz
 ../bin/colgrep:colgrep.cpp
 	$(CPP) -o $@ $(OPTIMIZE) $< -lz
 ../bin/manhattan:manhattan.cpp
 	$(CPP) -o $@ -Wall $< -lz
-../bin/groupbygene: groupbygene.cpp
-	$(CPP) -o $@ $(OPTIMIZE) $< -lz
 ../bin/mergexml:mergexml.cpp
 	$(CPP) -o $@ $(OPTIMIZE) `curl-config --cflags  --libs ` `xml2-config --cflags  --libs` $< 
 ../bin/escapeuri:escapeuri.c
